@@ -9,13 +9,13 @@
 #include "soc/rtc_cntl_reg.h"
 #include "esp_camera.h"
 
-const char* ssid = "La-Kasita2.4";
-const char* password = "*******";
+const char* ssid = "LaKsitaGuests_2.4";
+const char* password = "AnitaLavaLaTina";
 
-String serverName = "http://ec2-54-172-186-17.compute-1.amazonaws.com ";   // REPLACE WITH YOUR Raspberry Pi IP ADDRESS
+String serverName = "54.158.179.94";   // REPLACE WITH YOUR Raspberry Pi IP ADDRESS
 //String serverName = "example.com";   // OR REPLACE WITH YOUR DOMAIN NAME
 
-String serverPath = "/upload.php";     // The default serverPath should be upload.php
+String serverPath = "/logs";     // The default serverPath should be upload.php
 
 const int serverPort = 80;
 
