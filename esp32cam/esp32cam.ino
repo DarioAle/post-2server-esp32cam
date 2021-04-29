@@ -17,6 +17,8 @@ String serverName = "54.158.179.94";   // REPLACE WITH YOUR Raspberry Pi IP ADDR
 
 String serverPath = "/logs";     // The default serverPath should be upload.php
 
+String deviceId = "2121";
+
 const int serverPort = 80;
 
 WiFiClient client;
@@ -101,10 +103,13 @@ void setup() {
     ESP.restart();
   }
 
+  // TODO agregar un led indicador de prendio
+
   sendPhoto(); 
 }
 
 void loop() {
+  // TODO send a photo when a button is pressed
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= timerInterval) {
     sendPhoto();
@@ -128,8 +133,8 @@ String sendPhoto() {
 
   if (client.connect(serverName.c_str(), serverPort)) {
     Serial.println("Connection successful!");    
-    String head = "--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"imageFile\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
-    String tail = "\r\n--RandomNerdTutorials--\r\n";
+    String head = "--IOTobjectCounter\r\nContent-Disposition: form-data; name=\"name\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+    String tail = "\r\n--IOTobjectCounter--\r\n";
 
     uint32_t imageLen = fb->len;
     uint32_t extraLen = head.length() + tail.length();
@@ -137,49 +142,86 @@ String sendPhoto() {
   
     client.println("POST " + serverPath + " HTTP/1.1");
     client.println("Host: " + serverName);
+    client.println("x-device-id: " + deviceId);
     client.println("Content-Length: " + String(totalLen));
-    client.println("Content-Type: multipart/form-data; boundary=RandomNerdTutorials");
+    client.println("Content-Type: multipart/form-data; boundary=IOTobjectCounter");
     client.println();
     client.print(head);
+
+     
   
     uint8_t *fbBuf = fb->buf;
     size_t fbLen = fb->len;
-    for (size_t n=0; n<fbLen; n=n+1024) {
-      if (n+1024 < fbLen) {
+   
+    // data
+    for (size_t n = 0; n < fbLen; n += 1024) {
+      if (n + 1024 < fbLen) {
         client.write(fbBuf, 1024);
         fbBuf += 1024;
       }
-      else if (fbLen%1024>0) {
-        size_t remainder = fbLen%1024;
+      else if (fbLen % 1024 > 0) {
+        size_t remainder = fbLen % 1024;
         client.write(fbBuf, remainder);
       }
     }   
+
     client.print(tail);
+
+    // simple get request.
+//    client.println("GET /statusz HTTP/1.1");
+//    client.println("Host: " + serverName);
+//    client.println();
+
+    Serial.println("Request completed");
     
     esp_camera_fb_return(fb);
     
     int timoutTimer = 10000;
     long startTimer = millis();
     boolean state = false;
+    boolean charsRead = false;
     
     while ((startTimer + timoutTimer) > millis()) {
       Serial.print(".");
-      delay(100);      
+      delay(100);    
+      
+      // while there are available chars
       while (client.available()) {
         char c = client.read();
         if (c == '\n') {
-          if (getAll.length()==0) { state=true; }
+          if (getAll.length() == 0) { 
+            state = true; 
+          }
           getAll = "";
         }
-        else if (c != '\r') { getAll += String(c); }
-        if (state==true) { getBody += String(c); }
+        else if (c != '\r') { 
+          getAll += String(c); 
+        }
+        
+        if (state) { 
+          getBody += String(c); 
+        }
+
         startTimer = millis();
       }
-      if (getBody.length()>0) { break; }
+      
+      // if you read all characters don't try again.
+      if (getBody.length() > 0) {
+        charsRead = true;
+        break;
+      }
     }
-    Serial.println();
-    client.stop();
-    Serial.println(getBody);
+    
+    // TODO 
+    // Turn a led when the message is sent succesfully
+    if(!charsRead)
+      Serial.println("\nClient response timeout");
+    else {
+      Serial.println();
+      client.stop();
+      Serial.println(getBody + '\n');
+    }
+
   }
   else {
     getBody = "Connection to " + serverName +  " failed.";
