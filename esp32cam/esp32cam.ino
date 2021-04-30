@@ -20,6 +20,7 @@ String serverPath = "/logs";     // The default serverPath should be upload.php
 String deviceId = "2121";
 
 const int serverPort = 80;
+const int httpSuccess = 2;
 
 WiFiClient client;
 
@@ -103,8 +104,14 @@ void setup() {
     ESP.restart();
   }
 
-  // TODO agregar un led indicador de prendio
+  const int onIndicator = 14;
+  pinMode(onIndicator, OUTPUT);
+  digitalWrite(onIndicator, HIGH);
 
+  
+  pinMode(httpSuccess, OUTPUT);
+  digitalWrite(httpSuccess, LOW);
+  
   sendPhoto(); 
 }
 
@@ -112,6 +119,7 @@ void loop() {
   // TODO send a photo when a button is pressed
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= timerInterval) {
+    digitalWrite(httpSuccess, LOW);
     sendPhoto();
     previousMillis = currentMillis;
   }
@@ -216,10 +224,12 @@ String sendPhoto() {
     // Turn a led when the message is sent succesfully
     if(!charsRead)
       Serial.println("\nClient response timeout");
+      
     else {
       Serial.println();
       client.stop();
       Serial.println(getBody + '\n');
+      digitalWrite(httpSuccess, HIGH);
     }
 
   }
