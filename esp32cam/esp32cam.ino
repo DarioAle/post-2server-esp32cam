@@ -3,6 +3,8 @@
   
 */
 
+// adding comment to test git configuration
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include "soc/soc.h"
