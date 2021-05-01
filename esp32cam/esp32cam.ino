@@ -21,6 +21,7 @@ String deviceId = "2121";
 
 const int serverPort = 80;
 const int httpSuccess = 2;
+const int sendButton = 14;
 
 WiFiClient client;
 
@@ -43,7 +44,7 @@ WiFiClient client;
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-const int timerInterval = 30000;    // time between each HTTP POST image
+const int timerInterval = 3000;    // time between each HTTP POST image
 unsigned long previousMillis = 0;   // last time image was sent
 
 void setup() {
@@ -51,17 +52,17 @@ void setup() {
   Serial.begin(115200);
 
   WiFi.mode(WIFI_STA);
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+   Serial.println();
+   Serial.print("Connecting to ");
+   Serial.println(ssid);
   WiFi.begin(ssid, password);  
   while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
+     Serial.print(".");
     delay(500);
   }
-  Serial.println();
-  Serial.print("ESP32-CAM IP Address: ");
-  Serial.println(WiFi.localIP());
+   Serial.println();
+   Serial.print("ESP32-CAM IP Address: ");
+   Serial.println(WiFi.localIP());
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -99,30 +100,35 @@ void setup() {
   // camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
+     Serial.printf("Camera init failed with error 0x%x", err);
     delay(1000);
     ESP.restart();
   }
 
-  const int onIndicator = 14;
-  pinMode(onIndicator, OUTPUT);
-  digitalWrite(onIndicator, HIGH);
-
+  pinMode(sendButton, INPUT);
   
   pinMode(httpSuccess, OUTPUT);
   digitalWrite(httpSuccess, LOW);
   
-  sendPhoto(); 
+//  sendPhoto(); 
 }
 
 void loop() {
   // TODO send a photo when a button is pressed
   unsigned long currentMillis = millis();
+  int buttonState = digitalRead(sendButton); 
+  
   if (currentMillis - previousMillis >= timerInterval) {
     digitalWrite(httpSuccess, LOW);
-    sendPhoto();
     previousMillis = currentMillis;
   }
+
+  if(buttonState) {
+    Serial.println("\nSending photo");
+    sendPhoto();
+    buttonState = 0;
+  }
+  
 }
 
 String sendPhoto() {
@@ -132,15 +138,15 @@ String sendPhoto() {
   camera_fb_t * fb = NULL;
   fb = esp_camera_fb_get();
   if(!fb) {
-    Serial.println("Camera capture failed");
+     Serial.println("Camera capture failed");
     delay(1000);
     ESP.restart();
   }
   
-  Serial.println("Connecting to server: " + serverName);
+   Serial.println("Connecting to server: " + serverName);
 
   if (client.connect(serverName.c_str(), serverPort)) {
-    Serial.println("Connection successful!");    
+     Serial.println("Connection successful!");    
     String head = "--IOTobjectCounter\r\nContent-Disposition: form-data; name=\"name\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
     String tail = "\r\n--IOTobjectCounter--\r\n";
 
@@ -180,7 +186,7 @@ String sendPhoto() {
 //    client.println("Host: " + serverName);
 //    client.println();
 
-    Serial.println("Request completed");
+     Serial.println("Request completed");
     
     esp_camera_fb_return(fb);
     
@@ -190,7 +196,7 @@ String sendPhoto() {
     boolean charsRead = false;
     
     while ((startTimer + timoutTimer) > millis()) {
-      Serial.print(".");
+       Serial.print(".");
       delay(100);    
       
       // while there are available chars
@@ -222,20 +228,23 @@ String sendPhoto() {
     
     // TODO 
     // Turn a led when the message is sent succesfully
-    if(!charsRead)
+    if(!charsRead) {
       Serial.println("\nClient response timeout");
-      
+      digitalWrite(httpSuccess, LOW);
+    }
     else {
       Serial.println();
       client.stop();
       Serial.println(getBody + '\n');
       digitalWrite(httpSuccess, HIGH);
+      previousMillis = millis();
     }
 
   }
   else {
     getBody = "Connection to " + serverName +  " failed.";
-    Serial.println(getBody);
+     Serial.println(getBody);
+
   }
   return getBody;
 }
